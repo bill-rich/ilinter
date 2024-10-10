@@ -10,6 +10,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write  # This allows the workflow to create/edit releases
+
 jobs:
   build:
     runs-on: ubuntu-latest
