@@ -26,29 +26,66 @@ func main() {
 
 	// Walk through the AST and check variable names
 	ast.Inspect(node, func(n ast.Node) bool {
-		// Look for range statements (for loops)
+
+		// Handle range statements (for ... range loops)
 		if rangeStmt, ok := n.(*ast.RangeStmt); ok {
-			// Check if the key or value variables are named 'i'
-			if ident, ok := rangeStmt.Key.(*ast.Ident); ok && ident.Name == "i" {
-				// Exempt the variable 'i' in a range loop
-				return true
+			// Check the key variable in "for k, v := range ..."
+			if key, ok := rangeStmt.Key.(*ast.Ident); ok {
+				if key.Name != "i" && key.Name != "ok" && key.Name != "_" && len(key.Name) <= 2 {
+					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", key.Name, fset.Position(key.Pos()).Line)
+				}
 			}
+
+			// Check the value variable in "for k, v := range ..."
+			if value, ok := rangeStmt.Value.(*ast.Ident); ok {
+				if value.Name != "i" && value.Name != "ok" && value.Name != "_" && len(value.Name) <= 2 {
+					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", value.Name, fset.Position(value.Pos()).Line)
+				}
+			}
+
+			// Skip further checks for range loops as we only care about initialization.
+			return true
 		}
 
-		// Look for variable declarations
-		if decl, ok := n.(*ast.AssignStmt); ok {
-			for _, lhs := range decl.Lhs {
-				if ident, ok := lhs.(*ast.Ident); ok {
-					if len(ident.Name) <= 2 && ident.Name != "i" && ident.Name != "ok" {
-						fmt.Printf("Variable '%s' is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
+		// Handle standard for-loops (initialization part with ":=")
+		if forStmt, ok := n.(*ast.ForStmt); ok {
+			// Check if initialization is using ":="
+			if initStmt, ok := forStmt.Init.(*ast.AssignStmt); ok && initStmt.Tok == token.DEFINE {
+				for _, lhs := range initStmt.Lhs {
+					if ident, ok := lhs.(*ast.Ident); ok {
+						// If the variable name is 'i', it's fine to ignore
+						if ident.Name == "i" || ident.Name == "ok" || ident.Name == "_" {
+							return true
+						}
+						// Check if the variable is too short
+						if len(ident.Name) <= 2 {
+							fmt.Printf("Variable '%s' in for-loop initialization is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
+						}
 					}
 				}
 			}
 		}
 
+		// Handle variable declarations outside of loops (":=" assignments only)
+		if decl, ok := n.(*ast.AssignStmt); ok {
+			// Ensure we only check ":=" (initializations) and not "=" (assignments)
+			if decl.Tok == token.DEFINE {
+				for _, lhs := range decl.Lhs {
+					if ident, ok := lhs.(*ast.Ident); ok {
+						// Check if the variable name is too short and not the exempted 'i'
+						if len(ident.Name) <= 2 && ident.Name != "i" && ident.Name != "ok" && ident.Name != "_" {
+							fmt.Printf("Variable '%s' is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
+						}
+					}
+				}
+			}
+		}
+
+		// Handle regular variable declarations
 		if decl, ok := n.(*ast.ValueSpec); ok {
 			for _, name := range decl.Names {
-				if len(name.Name) <= 2 && name.Name != "i" {
+				// Check if the variable name is too short and not the exempted 'i'
+				if len(name.Name) <= 2 && name.Name != "i" && name.Name != "ok" && name.Name != "_" {
 					fmt.Printf("Variable '%s' is too short at position %d\n", name.Name, fset.Position(name.Pos()).Line)
 				}
 			}
