@@ -14,6 +14,8 @@ func main() {
 		return
 	}
 
+	returnCode := 0
+
 	filename := os.Args[1]
 
 	// Parse the Go file
@@ -33,6 +35,7 @@ func main() {
 			if key, ok := rangeStmt.Key.(*ast.Ident); ok {
 				if key.Name != "i" && key.Name != "ok" && key.Name != "_" && len(key.Name) <= 2 {
 					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", key.Name, fset.Position(key.Pos()).Line)
+					returnCode = 1
 				}
 			}
 
@@ -40,6 +43,7 @@ func main() {
 			if value, ok := rangeStmt.Value.(*ast.Ident); ok {
 				if value.Name != "i" && value.Name != "ok" && value.Name != "_" && len(value.Name) <= 2 {
 					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", value.Name, fset.Position(value.Pos()).Line)
+					returnCode = 1
 				}
 			}
 
@@ -60,6 +64,7 @@ func main() {
 						// Check if the variable is too short
 						if len(ident.Name) <= 2 {
 							fmt.Printf("Variable '%s' in for-loop initialization is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
+							returnCode = 1
 						}
 					}
 				}
@@ -75,6 +80,7 @@ func main() {
 						// Check if the variable name is too short and not the exempted 'i'
 						if len(ident.Name) <= 2 && ident.Name != "i" && ident.Name != "ok" && ident.Name != "_" {
 							fmt.Printf("Variable '%s' is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
+							returnCode = 1
 						}
 					}
 				}
@@ -87,10 +93,12 @@ func main() {
 				// Check if the variable name is too short and not the exempted 'i'
 				if len(name.Name) <= 2 && name.Name != "i" && name.Name != "ok" && name.Name != "_" {
 					fmt.Printf("Variable '%s' is too short at position %d\n", name.Name, fset.Position(name.Pos()).Line)
+					returnCode = 1
 				}
 			}
 		}
 
 		return true
 	})
+	os.Exit(returnCode)
 }
