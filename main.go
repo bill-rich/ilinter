@@ -33,7 +33,7 @@ func main() {
 		if rangeStmt, ok := n.(*ast.RangeStmt); ok {
 			// Check the key variable in "for k, v := range ..."
 			if key, ok := rangeStmt.Key.(*ast.Ident); ok {
-				if key.Name != "i" && key.Name != "ok" && key.Name != "_" && len(key.Name) <= 2 {
+				if !isException(key.Name) && len(key.Name) <= 2 {
 					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", key.Name, fset.Position(key.Pos()).Line)
 					returnCode = 1
 				}
@@ -41,7 +41,7 @@ func main() {
 
 			// Check the value variable in "for k, v := range ..."
 			if value, ok := rangeStmt.Value.(*ast.Ident); ok {
-				if value.Name != "i" && value.Name != "ok" && value.Name != "_" && len(value.Name) <= 2 {
+				if !isException(value.Name) && len(value.Name) <= 2 {
 					fmt.Printf("Variable '%s' in range loop is too short at position %d\n", value.Name, fset.Position(value.Pos()).Line)
 					returnCode = 1
 				}
@@ -58,7 +58,7 @@ func main() {
 				for _, lhs := range initStmt.Lhs {
 					if ident, ok := lhs.(*ast.Ident); ok {
 						// If the variable name is 'i', it's fine to ignore
-						if ident.Name == "i" || ident.Name == "ok" || ident.Name == "_" {
+						if isException(ident.Name) {
 							return true
 						}
 						// Check if the variable is too short
@@ -78,7 +78,7 @@ func main() {
 				for _, lhs := range decl.Lhs {
 					if ident, ok := lhs.(*ast.Ident); ok {
 						// Check if the variable name is too short and not the exempted 'i'
-						if len(ident.Name) <= 2 && ident.Name != "i" && ident.Name != "ok" && ident.Name != "_" {
+						if len(ident.Name) <= 2 && !isException(ident.Name) {
 							fmt.Printf("Variable '%s' is too short at position %d\n", ident.Name, fset.Position(ident.Pos()).Line)
 							returnCode = 1
 						}
@@ -91,7 +91,7 @@ func main() {
 		if decl, ok := n.(*ast.ValueSpec); ok {
 			for _, name := range decl.Names {
 				// Check if the variable name is too short and not the exempted 'i'
-				if len(name.Name) <= 2 && name.Name != "i" && name.Name != "ok" && name.Name != "_" {
+				if len(name.Name) <= 2 && !isException(name.Name) {
 					fmt.Printf("Variable '%s' is too short at position %d\n", name.Name, fset.Position(name.Pos()).Line)
 					returnCode = 1
 				}
@@ -101,4 +101,14 @@ func main() {
 		return true
 	})
 	os.Exit(returnCode)
+}
+
+func isException(varName string) bool {
+	exceptions := []string{"ok", "i", "_", "tx", "wg"}
+	for _, exception := range exceptions {
+		if varName == exception {
+			return true
+		}
+	}
+	return false
 }
